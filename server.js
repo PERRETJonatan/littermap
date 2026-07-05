@@ -6,9 +6,10 @@ import exifr from 'exifr';
 import session from 'express-session';
 import bcrypt from 'bcryptjs';
 const { compareSync } = bcrypt;
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { dirname, join, extname } from 'path';
-import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync, readdirSync, statSync, statfsSync } from 'fs';
 import { randomBytes } from 'crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -173,6 +174,42 @@ app.delete('/api/images/:id', requireAdmin, (req, res) => {
     try { import('fs').then(({ unlinkSync }) => unlinkSync(path)); } catch {}
   }
   res.json({ ok: true });
+});
+
+app.get('/api/monitor', requireAdmin, (req, res) => {
+  function folderStats(dir) {
+    try {
+      const entries = readdirSync(dir, { withFileTypes: true }).filter(e => e.isFile());
+      const size = entries.reduce((sum, e) => {
+        try { return sum + statSync(join(dir, e.name)).size; } catch { return sum; }
+      }, 0);
+      return { count: entries.length, size };
+    } catch { return { count: 0, size: 0 }; }
+  }
+
+  let disk = null;
+  try {
+    const { bsize, blocks, bfree, bavail } = statfsSync(UPLOADS_DIR);
+    disk = { total: blocks * bsize, used: (blocks - bfree) * bsize, free: bavail * bsize };
+  } catch {}
+
+  const totalImages = db.prepare('SELECT COUNT(*) as n FROM images').get().n;
+  const withGps     = db.prepare('SELECT COUNT(*) as n FROM images WHERE lat IS NOT NULL').get().n;
+  const latest      = db.prepare('SELECT created_at FROM images ORDER BY created_at DESC LIMIT 1').get();
+  const mem         = process.memoryUsage();
+
+  res.json({
+    uptime:        process.uptime(),
+    nodeVersion:   process.version,
+    platform:      `${os.platform()} ${os.arch()}`,
+    loadAvg:       os.loadavg(),
+    systemMemory:  { total: os.totalmem(), free: os.freemem() },
+    memory:        { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
+    uploads:       folderStats(UPLOADS_DIR),
+    thumbs:        folderStats(THUMBS_DIR),
+    disk,
+    database:      { total: totalImages, withGps, latestUpload: latest?.created_at ?? null },
+  });
 });
 
 const PORT = process.env.PORT || 3000;

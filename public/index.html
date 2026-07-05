@@ -95,6 +95,7 @@
       if (isAdmin) {
         nav.innerHTML = `
           <a href="/upload.html" class="btn">+ Upload</a>
+          <a href="/monitor.html" class="btn btn-ghost">Monitor</a>
           <button id="logout-btn" class="btn btn-ghost">${me.username} · Log out</button>
         `;
         document.getElementById('logout-btn').addEventListener('click', async () => {
