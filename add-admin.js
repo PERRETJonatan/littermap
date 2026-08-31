@@ -5,7 +5,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const db = new DatabaseSync(join(__dirname, 'database.sqlite'));
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const db = new DatabaseSync(join(DATA_DIR, 'database.sqlite'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS admins (

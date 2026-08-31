@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const UPLOADS = join(__dirname, 'uploads');
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const UPLOADS = join(DATA_DIR, 'uploads');
 const THUMBS  = join(UPLOADS, 'thumbs');
 const MAX_PX  = 2000;
 const QUALITY = 82;
@@ -13,7 +14,7 @@ const JPEG_EXTS = new Set(['.jpg', '.jpeg']);
 
 if (!existsSync(THUMBS)) mkdirSync(THUMBS);
 
-const db = new DatabaseSync(join(__dirname, 'database.sqlite'));
+const db = new DatabaseSync(join(DATA_DIR, 'database.sqlite'));
 
 function fmt(bytes) {
   return bytes >= 1024 * 1024

@@ -14,12 +14,18 @@ import { randomBytes } from 'crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const UPLOADS_DIR = join(__dirname, 'uploads');
-const THUMBS_DIR  = join(UPLOADS_DIR, 'thumbs');
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR);
-if (!existsSync(THUMBS_DIR))  mkdirSync(THUMBS_DIR);
+// Mutable state (SQLite DB, session secret, uploaded images) lives here.
+// Defaults to the app directory, so `node server.js` behaves exactly as
+// before; in a container, point DATA_DIR at a mounted volume.
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 
-const db = new DatabaseSync(join(__dirname, 'database.sqlite'));
+const UPLOADS_DIR = join(DATA_DIR, 'uploads');
+const THUMBS_DIR  = join(UPLOADS_DIR, 'thumbs');
+if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
+if (!existsSync(THUMBS_DIR))  mkdirSync(THUMBS_DIR, { recursive: true });
+
+const db = new DatabaseSync(join(DATA_DIR, 'database.sqlite'));
 db.exec(`
   CREATE TABLE IF NOT EXISTS images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +58,7 @@ const upload = multer({
   },
 });
 
-const secretPath = join(__dirname, '.session-secret');
+const secretPath = join(DATA_DIR, '.session-secret');
 const sessionSecret = existsSync(secretPath)
   ? readFileSync(secretPath, 'utf8').trim()
   : (() => {
